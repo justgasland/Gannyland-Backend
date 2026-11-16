@@ -168,6 +168,21 @@ export async function getProduct(id: string) {
     data: ProductSchema.parse(r.data.data),
   };
 }
+export async function getProductBySlug(slug: string) {
+  const r = await backend()
+    .from("public_catalogue")
+    .select("*")
+    .eq("data->>slug", slug)
+    .maybeSingle();
+  check(r.error);
+  if (!r.data) throw new Error("NOT_FOUND");
+  return {
+    id: r.data.id,
+    revision: r.data.revision,
+    firstPublishedAt: r.data.first_published_at,
+    data: ProductSchema.parse(r.data.data),
+  };
+}
 export async function readContent(kind: string) {
   const r = await backend().from("public_content").select("*").eq("kind", kind);
   check(r.error);

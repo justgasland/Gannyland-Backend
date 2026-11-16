@@ -103,11 +103,16 @@ export type Filters = {
   search?: string;
   category?: string;
   colour?: string;
+  colours?: string[];
   unit?: Unit;
   minMinor?: number;
   maxMinor?: number;
+  sort?: "newest" | "price-low" | "price-high";
+  priceUnit?: Unit;
 };
 export function filterProducts(rows: ProductRow[], f: Filters): ProductRow[] {
+  const filterUnit =
+    f.unit ?? (f.sort && f.sort !== "newest" ? f.priceUnit : undefined);
   return rows
     .filter(
       ({ data: p }) =>
@@ -118,9 +123,11 @@ export function filterProducts(rows: ProductRow[], f: Filters): ProductRow[] {
             .includes(f.search.toLowerCase())) &&
         (!f.category || p.category === f.category) &&
         (!f.colour || p.colours.some((c) => c.id === f.colour)) &&
+        (!f.colours?.length ||
+          p.colours.some((c) => f.colours?.includes(c.id))) &&
         p.sellingOptions.some(
           (o) =>
-            (!f.unit || o.unit === f.unit) &&
+            (!filterUnit || o.unit === filterUnit) &&
             ((f.minMinor === undefined && f.maxMinor === undefined) ||
               (o.amountMinor !== null &&
                 (f.minMinor === undefined || o.amountMinor >= f.minMinor) &&
@@ -128,9 +135,23 @@ export function filterProducts(rows: ProductRow[], f: Filters): ProductRow[] {
         ),
     )
     .sort(
-      (a, b) =>
-        b.firstPublishedAt.localeCompare(a.firstPublishedAt) ||
-        a.id.localeCompare(b.id),
+      (a, b) => {
+        if (f.sort && f.sort !== "newest" && f.priceUnit) {
+          const price = (row: ProductRow) =>
+            row.data.sellingOptions.find((o) => o.unit === f.priceUnit)
+              ?.amountMinor ?? null;
+          const pa = price(a);
+          const pb = price(b);
+          if (pa === null && pb !== null) return 1;
+          if (pb === null && pa !== null) return -1;
+          if (pa !== null && pb !== null && pa !== pb)
+            return f.sort === "price-low" ? pa - pb : pb - pa;
+        }
+        return (
+          b.firstPublishedAt.localeCompare(a.firstPublishedAt) ||
+          a.id.localeCompare(b.id)
+        );
+      },
     );
 }
 export function relatedProducts(

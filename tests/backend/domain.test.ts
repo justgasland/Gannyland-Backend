@@ -92,6 +92,61 @@ describe("catalogue contracts", () => {
     ).toHaveLength(0);
     expect(filterProducts(rows, {})).toHaveLength(2);
   });
+  it("supports multi-colour filters and sorts by an explicit selling unit", () => {
+    const rows = [
+      row("a", product, "2026-11-03T00:00:00Z"),
+      row(
+        "b",
+        {
+          ...product,
+          name: "Lower-priced fabric",
+          colours: [{ id: "black", name: "Black", hex: "#000000" }],
+          sellingOptions: [
+            {
+              id: "yard",
+              unit: "yard",
+              priceMode: "exact",
+              amountMinor: 1000000,
+            },
+            {
+              id: "length",
+              unit: "trouser_length",
+              priceMode: "exact",
+              amountMinor: 7000000,
+            },
+          ],
+        },
+        "2026-11-02T00:00:00Z",
+      ),
+      row(
+        "c",
+        {
+          ...product,
+          name: "Enquiry fabric",
+          sellingOptions: [
+            {
+              id: "yard",
+              unit: "yard",
+              priceMode: "enquiry",
+              amountMinor: null,
+            },
+          ],
+        } as never,
+      ),
+    ];
+    expect(filterProducts(rows, { colours: ["black"] }).map((r) => r.id)).toEqual([
+      "b",
+    ]);
+    expect(
+      filterProducts(rows, { sort: "price-low", priceUnit: "yard" }).map(
+        (r) => r.id,
+      ),
+    ).toEqual(["b", "a", "c"]);
+    expect(
+      filterProducts(rows, { sort: "price-high", priceUnit: "trouser_length" })
+        .map((r) => r.id),
+    ).toEqual(["b", "a"]);
+  });
   it("recommends up to three same-category available fabrics", () => {
     expect(
       relatedProducts(
